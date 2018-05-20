@@ -3,6 +3,7 @@ title: "Shiny app tutorial"
 author: "Jorge Cimentada"
 date: "5/20/2018"
 output: html_document
+runtime: shiny
 ---
 
 Shiny apps contain two basic building blocks. First is the user interface (UI) which is the code that generates the website that a user interacts with. Secondly is the server which is an R script that generates the output that will populate the Shiny app.
@@ -27,7 +28,7 @@ ui <- fluidPage(
 
 Notice that sliders don't have to be saved into an R object because they just generate html. Sliders must contain an `inputId` that must have a unique name because the value captured by that slider will usually be used later on by the `server` side. Moreover, the output needs to be shown by a special `*Output` function. There are many of these for plots, tables, text, etc..
 
-Also note that both expressions need to be separated by a `,`.
+**Also note that both expressions need to be separated by a `,`. `fluidPage` doesn't take an expression as an argument but rather a series of expressions which need not be wrapped in `{}` but separated by a comma.**
 
 ### Server rules
 
@@ -73,3 +74,175 @@ shinyApp(ui = ui, server = server)
 * All output needs to be saved to `output$`
 * Build outputs with `*render()` objects
 * Access input objects with `input$`
+
+
+### Reactivity
+
+Reactivity works this way:
+
+* An input is changed
+* The input notifies all expressions that are using the input that it has changed
+* Each expression is recomputed in the order in which it appears.
+
+For example..
+
+```{r}
+ui <- fluidPage(
+  dateInput("date_input", label = ""),
+  textOutput("today_date"),
+  plotOutput("hist")
+)
+
+server <- function(input, output) {
+  
+  output$today_date <-
+    renderText({
+      paste0("Today's date is ", input$date_input, " so the plot's title is")
+    })
+  
+  output$hist <-
+    renderPlot(
+      hist(rnorm(100), main = input$date_input)
+    )
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+Whenever I change the date, `input$date_input` notifies the text and then the histogram. Both expressions are recomputed, in the order in which they appear. To only use `input$date_input` once (for example, if you had random numbers) you can wrap the input in `reactive`. This way we create an intermediate object once and reuse it for all the inputs. This makes a lot of sense if you're doing some sort of transformation on the input. Use the result of this intermediate object as a function.
+
+```{r}
+ui <- fluidPage(
+  dateInput("date_input", label = ""),
+  textOutput("today_date"),
+  plotOutput("hist")
+)
+
+server <- function(input, output) {
+  
+  the_date <- reactive(input$date_input)
+  
+  output$today_date <-
+    renderText({
+      paste0("Today's date is ", the_date(), " so the plot's title is")
+    })
+  
+  output$hist <-
+    renderPlot(
+      hist(rnorm(100), main = the_date())
+    )
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+As a final note on `reactive`, **reactive expressions are computed once and cached for all outputs or other computations once**. So feel free to use across your code.
+
+
+You can use `isolate()` to make a reactive expression not reactive. For example
+
+```{r}
+ui <- fluidPage(
+  sliderInput("slid", "Choose numbers",
+              min = 20,
+              max = 100,
+              value = 25),
+  textInput("title", label = "Title of plot"),
+  plotOutput("scatter")
+)
+
+server <- function(input, output) {
+  output$scatter <- renderPlot({
+    plot(rnorm(input$slid), rnorm(input$slid), main = isolate(input$title))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+What `isolate` does is that `input$title` will not recompute the scatter anymore. You can type your title but the plot won't rebuild. It will rebuild when you change the slide, so this gives you time to write your title and avoid the plot from rebuilding every time.
+
+
+
+### Events
+
+You can also trigger things to happen using, for example, using an action button and `observeEvent`.
+
+```{r}
+ui <- fluidPage(
+  numericInput("numid", "Choose a number", value = 0),
+  actionButton("button", "Print number!"),
+  textOutput("number_is")
+)
+
+server <- function(input, output) {
+  observeEvent(input$button, handlerExpr = {
+    output$number_is <- renderText(paste0("Woho! Number is ", isolate(input$numid)))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+
+Whenever you click the action button, `observeEvent` is paying attention and executes an expression in `handleExpr`. Note that this expression should be a side-effect and it wil not return anything! I'm not entirely sure what's the difference between `observe` and `observeEvent`.
+
+`eventReactive` helps to delay execution.
+
+```{r}
+ui <- fluidPage(
+  numericInput("numid", "Choose a number", value = 0),
+  actionButton("button", "Print number!"),
+  textOutput("number_is")
+)
+
+server <- function(input, output) {
+  vals <- eventReactive(input$button, {input$numid})
+  output$number_is <- renderText({
+    paste("Woho! This is an eventReactive expression for number ", vals())
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+#### Difference between observeEvent and eventReactive
+
+The main difference between `observeEvent` and `eventReactive` is that the first just waits until a trigger to execute a side efect (could be a script, calling a database, changing the value of a reactive value) and doesn't return anything (!) whereas the other allows to return a value, expression or whatever, based on a trigger. More usefully, you would use this to return a value whenever you click on a button, delaying it's execution until it's clicked.
+
+
+Finally, sometimes you want to have reactive values before the user inputs, for that you can use `reactiveValues()`.
+
+Example:
+
+```{r}
+valsnorm <- rnorm(10000)
+
+ui <- fluidPage(
+  sliderInput("nbins", "Choose # bins",
+              min = 50,
+              max = 150,
+              value = 120),
+  actionButton("mk_plt", "Make plot!"),
+  plotOutput("hist")
+)
+
+server <- function(input, output) {
+  new_vals <- reactiveValues(nbins = 100)
+  
+  observeEvent(input$mk_plt, {new_vals$nbins <- input$nbins})
+  
+  output$hist <- renderPlot({
+    hist(valsnorm, breaks = new_vals$nbins, main = new_vals$nbins)
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+
+The workflow from before can be summarized here:
+
+![](summary_shiny.jpg)
+
+
