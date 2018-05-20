@@ -162,6 +162,56 @@ shinyApp(ui = ui, server = server)
 
 What `isolate` does is that `input$title` will not recompute the scatter anymore. You can type your title but the plot won't rebuild. It will rebuild when you change the slide, so this gives you time to write your title and avoid the plot from rebuilding every time.
 
+**`isolate` should be used inside a reactive environment such as `render*` functions.** For example, I wanted to isolate one variable which was used many times but I didn't want to use `isolate` in every line where the variable is used. I was placing `isolate` outside `renderPlot` and then using it inside the reactive environment but was getting weird errors.
+
+```{r}
+col_names <- names(iris)
+
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      fluidRow(column(6, uiOutput("xvar")), column(6, uiOutput("yvar"))),
+      actionButton("mk_pl", label = "Make plot")),
+    mainPanel(plotOutput("scatter"))
+  )
+)
+
+server <- function(input, output, session) {
+  output$xvar <- renderUI(
+    selectInput("xvar",
+                label = "Select your X variable",
+                choices = col_names)
+  )
+  
+  output$yvar <- renderUI(
+    selectInput("yvar",
+                label = "Select your Y variable",
+                choices = col_names)
+  )
+  
+  output$scatter <- renderPlot({
+    # Make button dependency
+    input$mk_pl
+    
+    # isolate should go INSIDE a reactive environment
+    variables <-
+      isolate({
+        list(iris[input$xvar],
+             iris[input$yvar])
+      })
+    
+    
+    plot(variables[[1]][, 1],
+         variables[[2]][, 1],
+         xlab = names(variables[[1]]),
+         ylab = names(variables[[2]]))
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Why? It makes sense. In a reactive environment where everything **will** be updated when you change something, you isolate some expression not to be recomputed.
 
 
 ### Events
