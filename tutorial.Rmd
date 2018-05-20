@@ -1,0 +1,75 @@
+---
+title: "Shiny app tutorial"
+author: "Jorge Cimentada"
+date: "5/20/2018"
+output: html_document
+---
+
+Shiny apps contain two basic building blocks. First is the user interface (UI) which is the code that generates the website that a user interacts with. Secondly is the server which is an R script that generates the output that will populate the Shiny app.
+
+
+### UI rules
+
+Let's first define the user interface. The user interace has sliders and html widgets that allow the user to tweak the output for what they want it. So the UI **could** contain sliders and that sliders must control something, so the UI usually has outputs. These are the fundamentals of the UI. For example
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  sliderInput(inputId = "slid",
+              label = "Choose bins",
+              min = 20,
+              max = 100,
+              value = 25),
+  plotOutput("hist")
+)
+```
+
+Notice that sliders don't have to be saved into an R object because they just generate html. Sliders must contain an `inputId` that must have a unique name because the value captured by that slider will usually be used later on by the `server` side. Moreover, the output needs to be shown by a special `*Output` function. There are many of these for plots, tables, text, etc..
+
+Also note that both expressions need to be separated by a `,`.
+
+### Server rules
+
+Servers need to have `input` and `output` arguments. It makes sense: you need to receive something to generate something and then you produce something that you will show in the UI. Input and output objects are reactive, which means that whenever an input is changed, a new output is produced with the new input value. But one very important rule is that reactive elements need be inside special functions. For example, to produce a plot using the slider from before we need to wrap everything in `renderPlot` a function designed to workn with reactivity.
+
+```{r}
+server <- function(input, output) {
+  output$hist <- renderPlot({
+    hist(rnorm(input$slid))
+  })
+}
+```
+
+We can use `input$slid` because it's inside a reactive expression. We render the plot with the new value from the slider using `renderPlot` and then save it as `output$hist`. The UI will now plot `output$hist` using `plotOutput` because it calls `hist`. Note that they must have the same name.
+
+The app looks like this
+
+```{r}
+
+library(shiny)
+
+ui <- fluidPage(
+  sliderInput(inputId = "slid",
+              label = "Choose bins",
+              min = 20,
+              max = 100,
+              value = 25),
+  plotOutput("hist")
+)
+
+server <- function(input, output) {
+  output$hist <- renderPlot({
+    hist(rnorm(input$slid))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+#### Overall rules
+
+* Every input needs tobe inside a reactive expression in `server`
+* All output needs to be saved to `output$`
+* Build outputs with `*render()` objects
+* Access input objects with `input$`

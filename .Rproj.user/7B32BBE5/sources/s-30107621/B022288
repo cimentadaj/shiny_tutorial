@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1526826561450.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B022288",
+    "lastKnownWriteTime" : 1526827810,
+    "last_content_update" : 1526827810620,
+    "path" : "~/all_repos/shiny_tutorial/tutorial.Rmd",
+    "project_path" : "tutorial.Rmd",
+    "properties" : {
+        "cursorPosition" : "70,0",
+        "scrollLine" : "34",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
