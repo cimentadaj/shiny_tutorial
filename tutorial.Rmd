@@ -245,4 +245,170 @@ The workflow from before can be summarized here:
 
 ![](summary_shiny.jpg)
 
+### Working with the User Interface (UI)
 
+* `tags$p` - paragraph
+* `tags$strong` - bold
+* `tags$em` - italics
+* `tags$hr` - horizontal rule
+* `tags$a` - hyperlinks
+* `tags$img` - src arg will look for an image.
+
+Named arguments inside the `tags$*` function wil be used as attributes and unnamed arguments will be passed to the body of the tag. For example, `tags$a(href = "whatever.com", "My link")` will translate to `<a href = "whatever.com"> My link </a>`.
+
+**To include images, create a folder `www` inside the shiny folder and images will be searched for there**
+
+You can add html by quoting html as a string and wrapping it in `HTML()`.
+
+You can position anything in your app with `fluidRow` and `columns` to insert rows, and insert columns within those rows
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  fluidRow(column(4, sliderInput("slid", label = "Slider", min = 10, max = 20, value = 5))),
+  fluidRow(),
+  fluidRow(column(12, offset = 3, plotOutput("scatter", width = "50%")))
+)
+
+server <- function(input, output, session) {
+  output$scatter <- renderPlot(plot(rnorm(100), rnorm(100)))
+}
+
+shinyApp(ui, server)
+```
+
+`fluidRow` introduces 12 columns rows which you can add slides, plots, images, texts or anything controlling for the number of columns each object occupies. This is done using the `column` function from above. Note that the first argument of `columns` specifies the number of columns the object will occupy and `offset` will control where those 12 columns begin. 
+
+With this two options you can control the position of your objects very much like a grid with an X axis and a Y axis.
+
+
+#### Panels
+
+* `wellPanel` wraps slides into a common background (grey)
+
+* `tabsetPanel` to create the structure of N panels
+
+  * `tabPanel` creates tabs that you can navigate. Inside each tab you can treat it as your own UI and use `fluidRows`, etc..
+
+For example..
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(title = "Random generator",
+  tabsetPanel(
+    tabPanel(title = "Normal","whatever"),
+    tabPanel(title = "Uniform","whatever"),
+    tabPanel(title = "Chi Squared data","whatever")
+  )
+)
+
+server <- function(input, output) {
+  
+}
+
+shinyApp(server = server, ui = ui)
+```
+
+So `tabsetPanel` is like a navigation system and `tabPanel` shows each tab.
+
+* `navlistPanel` is the same, but creates a sidebar list of panels.
+
+```{r}
+
+ui <- fluidPage(title = "Random generator",
+  navlistPanel(
+    tabPanel(title = "Normal","whatever"),
+    tabPanel(title = "Uniform","whatever"),
+    tabPanel(title = "Chi Squared data","whatever")
+  )
+)
+
+server <- function(input, output) {
+  
+}
+
+shinyApp(server = server, ui = ui)
+```
+
+
+There's pre packaged layouts. Here are examples:
+
+**fluidPage is fluid because it auto scales when you change the size of your browser! For fixed size use fixedPage. An alternative is navBarPage**
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(actionButton("whatever", "Click me")),
+    mainPanel(plotOutput("scatter"))
+  )
+)
+
+server <- function(input, output, session) {
+  output$scatter <- renderPlot(plot(rnorm(100), rnorm(100)))
+}
+
+shinyApp(ui, server)
+```
+
+
+```{r}
+library(shiny)
+
+ui <- navbarPage(title = "Random generator",
+    tabPanel(title = "Normal data"),
+    tabPanel(title = "Uniform data"),
+    tabPanel(title = "Chi Squared data"))
+
+server <- function(input, output) {
+  
+}
+
+shinyApp(server = server, ui = ui)
+```
+
+Same as before, but regroup some panels into once drop down menu tab.
+
+```{r}
+# 06-navlist.R
+
+library(shiny)
+
+ui <- navbarPage(title = "Random generator",
+  tabPanel(title = "Normal data"),
+  navbarMenu(title = "Other data",
+    tabPanel(title = "Uniform data"),
+    tabPanel(title = "Chi Squared data")
+  )
+)
+
+server <- function(input, output) {}
+
+shinyApp(server = server, ui = ui)
+```
+
+### Style everything with CSS
+
+Place all .css in `www`.
+
+```{r, eval = FALSE}
+library(shiny)
+
+ui <- fluidPage(
+  theme = "name_of_css.css inside `www`"
+  # OR
+  includeCSS("path to css")
+  # OR write manually within tags
+  tags$h1(style = "color:red")
+)
+
+server <- function(input, output, session) {
+}
+
+shinyApp(ui, server)
+```
+
+Still need to learn CSS. https://www.codecademy.com/en/tracks/web and when you know it, go to http://shiny.rstudio.com/articles/css.html
